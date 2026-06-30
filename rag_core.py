@@ -2,8 +2,8 @@
 Shared RAG logic for the Ask Ubuntu project.
 
 Both the terminal script (askubuntu_rag.py) and the Streamlit UI (app.py)
-import from here, so retrieval, the prompt, and the relevance gate live in
-exactly one place. Change the prompt or threshold here and both update.
+import from here, so retrieval, the prompt, and the relevance gate are in
+exactly one place. 
 """
 
 import chromadb
@@ -15,9 +15,8 @@ EMBED_MODEL = "all-MiniLM-L6-v2"
 CHROMA_PATH = "./chroma_askubuntu"
 COLLECTION = "askubuntu"
 
-# Cosine distance above which we treat even the BEST hit as "not a real match"
-# and refuse to answer. Your good hits sat around 0.22-0.29; tangential ones
-# came back higher. 0.45 is a starting guess — tune it against real queries.
+# Cosine distance above which the system treats even the BEST hit as "not a real match"
+# and refuses to answer. Good hits sat around 0.22-0.29.
 RELEVANCE_THRESHOLD = 0.45
 
 NO_ANSWER = (

@@ -4,12 +4,12 @@ Evaluation harness for the Ask Ubuntu RAG.
 Runs a batch of real questions (from the Ubuntu dialogue dataset) through the
 pipeline, records each one's best retrieval distance and whether the relevance
 gate let it answer, and writes BOTH:
-  * eval_results.csv   — flat, sortable in a spreadsheet
-  * eval_report.html   — one readable card per question, opens in your browser
+  * eval_results.csv   -- flat, sortable in a spreadsheet
+  * eval_report.html   -- one readable card per question, opens in browser
 
 Two uses:
-  * Threshold tuning (fast): leave GENERATE = False. You only need distances.
-  * Quality review (slow): set GENERATE = True to also generate answers to read.
+  * Threshold tuning (fast): leave GENERATE = False. If you only need distances.
+  * Quality review (slow): set GENERATE = True to also generate answers to read (might take a little time).
 
     python eval_harness.py
 """

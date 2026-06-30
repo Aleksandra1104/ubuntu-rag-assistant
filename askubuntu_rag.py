@@ -1,8 +1,8 @@
 """
-Ask Ubuntu RAG — retrieve relevant Q&A from your Chroma index, then have a
-local Ollama model write an answer grounded in what was retrieved.
+Ask Ubuntu RAG. Retrieve relevant Q&A from your Chroma index, then a
+local Ollama model will write an answer based on what was retrieved.
 
-All the real logic lives in rag_core.py; this just calls it and prints.
+All the real logic lives in rag_core.py; this script just calls it and prints.
 
     python askubuntu_rag.py
 """

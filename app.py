@@ -1,12 +1,12 @@
 """
 Streamlit chat UI for the Ask Ubuntu RAG project.
 
-Run it (NOT with `python`) from your project folder, venv active:
+Run it from your project folder, venv active:
     streamlit run app.py
 
 Opens at http://localhost:8501. Shared logic lives in rag_core.py.
 Prereqs: pip install streamlit  (plus chromadb, sentence-transformers,
-langchain-ollama). Ollama must be running; index built by prepare_dataset.py.
+langchain-ollama). Ollama must be running and index built by prepare_dataset.py.
 """
 
 import streamlit as st

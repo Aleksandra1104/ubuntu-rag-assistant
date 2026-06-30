@@ -60,7 +60,6 @@ if __name__ == "__main__":
     print("-" * 60)
     print(metas[0])
 
-    # Next step (your existing stack):
     import chromadb
     from chromadb.utils import embedding_functions
     ef = embedding_functions.SentenceTransformerEmbeddingFunction(
