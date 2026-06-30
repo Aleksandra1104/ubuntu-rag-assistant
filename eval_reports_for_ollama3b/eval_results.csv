@@ -1,0 +1,97 @@
+question,best_distance,gate,top_source,answer
+upgrade downloads & installs to the latest version available,0.408,answer,https://askubuntu.com/q/72969,"To upgrade to the latest Ubuntu version without downloading the full installation media, you can use a ""mini-apt repository"" which is essentially an alternate CD that contains only the necessary packages for a working system. You'll need to download this mini-apt repository, insert it into your machine while booted up, and then add it as a new source in Software Center. From there, you can proceed with the upgrade process, but keep in mind that some non-default packages may not be included on the CD and will need to be updated using your internet connection afterwards."
+How are you able to be in sudo perpetually?,0.432,answer,https://askubuntu.com/q/700258,"To ensure that you are not running as root, you should check the permissions of files you edit. If the file has write permissions for both the owner (you) and others, you won't need to use sudo to edit it. You can check the permissions by typing `ls -l <filename>`. Look for the ""other"" section, which shows permissions for all users on the system. If ""other"" has write permissions, you don't need sudo access.
+
+To disable root access permanently and only run as admin, you would need to throw away your hard drive and install a new one with a different Linux distribution, such as Puppy Linux."
+simple question:  does anyone have a chance to tell me what the command in Startup Applications is for the ubuntu bongo startup sound?,0.393,answer,https://askubuntu.com/q/503381,"To play the old Ubuntu startup sound from 6.06 LTS Dapper Drake in Ubuntu Bongo, you can use the command `/usr/bin/canberra-gtk-play --id=""desktop-login"" --description=""GNOME Login""` directly in a terminal or add it to the Startup Applications list as described in the accepted answer for the title ""How to add the old startup sound (not login sound)?""."
+Is there any soft for Driver Finding ? ??,0.566,REFUSE,https://askubuntu.com/q/185799,[gated — refused]
+"I am trying to get the AirPort utility to run on Ubuntu. I installed Wine, downloaded the AirPort Utility for Windows, it installed nicely. But it doesn't find my little AirPort Express when scanning. Why doesn't it find it? What do I have to reconfigure?",0.58,REFUSE,https://askubuntu.com/q/192440,[gated — refused]
+"evening everyone, can someone help me with this wine problem, I can't start wine or even winecfg without X crashing... ??",0.375,answer,https://askubuntu.com/q/653562,"If Wine crashes and you can't kill it using xkill, try using the ""killall"" command to terminate the process directly, just like you would with any other Linux process."
+Hi - can someone point me to an article on how ubuntu synchronizes its system time in a networked environment?,0.295,answer,https://askubuntu.com/q/641158,"To get your laptop's system clock in sync with the other two Ubuntu desktops and stay synchronized with an online server, you'll need to install and configure the NTP service. Since your laptop is not connected to the internet until after logging in, you can use `ntpdate` to synchronize the time when the network interface is brought up.
+
+First, install the `ntp` package using `sudo apt-get install ntp`. This will set up the NTP service and ensure that your system clock is synchronized with a server. You may also want to consider installing `ntpdate-debian` for more flexibility in scheduling the time synchronization.
+
+Next, edit the `/etc/default/rcS` file (using `sudo emacs /etc/default/rcS`) and set `UTC=yes` to indicate that you want to use UTC time. This will ensure that your system clock is displayed in UTC format.
+
+Additionally, you can check if there are any NTP configuration files present on your system by looking for a `/etc/ntp.conf` file. If this file exists, it may contain lines starting with the keyword 'server', which indicate the servers used for time synchronization. You can modify these settings to ensure that your system clock is synchronized with the desired server.
+
+Once you've completed these steps, your laptop's system clock should be in sync with the other two Ubuntu desktops and stay synchronized with an online server."
+I have a question how can I get the most out of ubuntu in a virtual machine,0.422,answer,https://askubuntu.com/q/2353,"To get the most out of Ubuntu in a virtual machine, I'd recommend using VirtualBox as it provides an easy-to-use interface for creating and managing virtual machines. It allows you to create a new virtual machine with a specific amount of RAM and disk space, making it ideal for testing different operating systems without affecting your host system. Additionally, VirtualBox supports various Linux distributions, including Ubuntu, and can be easily installed from the Ubuntu Software Center."
+"Can anyone tell me why it would say '192.168.0.256: Unknown host' (192.168.0.256 being the static ip), 'failed to bring up eth0' after setting up a static ip in /etc/network/interfaces on a clean install of Ubuntu in VirtualBox(without X)?",0.349,answer,https://askubuntu.com/q/623583,"The issue is likely due to the fact that you're using a host-only network adapter, which doesn't have a default gateway. You've set up the static IP address correctly, but since there's no default gateway, the system can't resolve DNS or access the internet. To fix this, remove the Gateway and DNS settings from your /etc/network/interfaces configuration, as they're not needed for host-only networks."
+"hi can i know what the md5 hash for  ubuntu-11.10-desktop-amd64.iso, it still not list in https://help.ubuntu.com/community/UbuntuHashes",0.206,answer,https://askubuntu.com/q/503776,"The MD5 hash for ubuntu-11.10-desktop-amd64.iso is not available on the official Ubuntu website, but you can try searching for it on other websites or using a different source to download the ISO file. Alternatively, you can check the integrity of the downloaded file by comparing its MD5 sum with one from a trusted source, such as LinuxTracker.org."
+"Hi, what is the command again to stop certain services from booting up? sysctl something.. I forget",0.385,answer,https://askubuntu.com/q/912216,"To stop certain services from booting up, you'll need to disable them using systemd. This is the recommended way in Ubuntu 15.04 and later versions. You can use the `systemctl` command to achieve this. For example, to disable the MongoDB service, run:
+
+```bash
+sudo systemctl disable mongodb
+```
+
+This will prevent MongoDB from starting on boot. If you want to mask it further so that no other service can start it, you can do:
+
+```bash
+sudo systemctl mask mongodb
+```
+
+This will link the MongoDB service to `/dev/null`, effectively disabling it and preventing any other service from starting it.
+
+Note: Make sure to use `systemctl` instead of `sysctl` or other older commands that are deprecated in newer Ubuntu versions."
+"I have problems with firefox. So, is there any way to upgrade firefox from the terminal??",0.348,answer,https://askubuntu.com/q/560846,"To upgrade Firefox from the terminal, simply run `sudo apt-get update` followed by `sudo apt-get install firefox`. This will pull in the latest version of Firefox and its dependencies. Note that this method is recommended as it ensures that your system's package information is up-to-date and that you're installing the latest version of Firefox available for your Ubuntu release."
+i am looking for an app like quicksilver for mac and or launchy for pc...what is the best solution for a program like this for ubuntu,0.456,REFUSE,https://askubuntu.com/q/124947,[gated — refused]
+I have a directory full of other directories and files. How do I give permissions 744 to all directories and permissions 644 to files within the directories?,0.354,answer,https://askubuntu.com/q/30629,"To apply permissions of 744 to all directories and 644 to files within those directories, you can use the `chmod` command with the `-R` option. This will recursively change the permissions of all files and subdirectories.
+
+Try running the following command:
+
+```bash
+find /path/to/directory -type d -exec chmod 744 {} \;
+```
+
+This will set the permissions to 744 for all directories, while leaving the file permissions unchanged. If you want to apply a different permission to files as well, you can modify the command accordingly.
+
+Note that if you're working with a large directory structure, it's often more efficient to use `find` commands like this one rather than trying to manually change permissions for each subdirectory and file individually."
+keyserver.ubuntu.com is timing out? expected? massive traffic?,0.511,REFUSE,https://askubuntu.com/q/338431,[gated — refused]
+i want to boot as verbose as possible (textmode). what is the best way to do that? work on boot up scripts? boot options?,0.367,answer,https://askubuntu.com/q/92276,"To boot into text mode with as much verbosity as possible, you should add the ""text"" parameter to the GRUB_CMDLINE_LINUX_DEFAULT line in /etc/default/grub, along with removing any existing quiet or splash parameters. This will ensure that all kernel messages are displayed on screen during boot-up, without a graphical interface."
+"Hi. I really need help. I need to make a bash script that will fire up one file as a root. Sudo is set to NOPASSWD so authorization is not an issue, however, the 'sudo su;programname -p' does not work. Any suggestions?",0.341,answer,https://askubuntu.com/q/167847,"To run a script as root without being prompted for a password, you can use the SetUID bit. This involves making the script executable by all and writable only by root, then setting the SetUID bit on the file. Alternatively, you can add specific lines to your sudoers file to allow running scripts with root privileges without prompting for a password."
+actually I noticed on my system that one does not *have* to use vi to edit /etc/sudoers - nano as root works fine here: any reason not to do it that way?,0.32,answer,https://askubuntu.com/q/620661,"Editing /etc/sudoers as root does not require using vi or any other specific editor. You can use any text editor, including nano, to edit this file. The recommended practice is to use visudo, which provides additional safety features and checks for errors in the sudoers file."
+Is there a page that tells you what EXACTLY to do when you are trying to install Ubuntu on a laptop and properly partion that hard drive?,0.454,REFUSE,https://askubuntu.com/q/706798,[gated — refused]
+"my install broke somewhere during package installation, leaving me without either ssh or gdm.. is there an easy way to tell aptitude to simply install all the base install packages ?",0.398,answer,https://askubuntu.com/q/1165171,"To install the base packages, you can try installing the `ubuntu-server` package set, which includes many of the essential tools and scripts. However, keep in mind that this will remove the `ubuntu-server` metapackage if it's already installed, so be cautious when using this approach.
+
+You can also use `aptitude` to list all installed packages, including their dependencies, by running the command `aptitude search -F '%100p' '~i!~M' > installedpackages`. This should give you a list of packages that are explicitly installed and their dependencies."
+"Hello, does anyone know whether it is possible to switch from Mint to Ubuntu (preserving setttings etc.)?",0.368,answer,https://askubuntu.com/q/738450,"It seems like you've provided a collection of questions and answers related to Linux distributions, specifically Ubuntu, Linux Mint, OpenSuse, and general Linux usage. I'll provide a summary of the main points:
+
+**Changing to another distro with a separate /home partition**
+
+* It is generally possible to keep a separate /home partition when switching to another distro.
+* However, be aware that file access rights are stored based on user ID, not name, so ensure your user has the same ID on all OSes.
+* Some applications may behave erratically or crash if they're not compatible with the new distro or have different versions.
+* Consider keeping all files on a separate partition and mounting it as /home on each system, rather than using the root partition's /home.
+
+**Differences between Ubuntu and Linux Mint**
+
+* Apart from Unity, the two distributions have distinct features:
+	+ Linux Mint has a more customizable desktop environment and includes additional features like MintAssistant, MintBackup, and MintNanny.
+	+ Linux Mint has a ""More Green"" theme and installs proprietary drivers and software automatically.
+	+ Ubuntu has a Software Center with options to run .mint files, while Linux Mint's Software Center is similar but includes this option.
+
+**Proprietary drivers and software**
+
+* Debian (the base of Linux Mint) does not have an easy way to install proprietary drivers, whereas Ubuntu provides this option during installation.
+* Linux Mint installs proprietary drivers and additional software automatically, including Flash.
+
+**Release schedules and updates**
+
+* Ubuntu has a more predictable release schedule, with a specific date and time for each release.
+* Linux Mint's release schedule is less formalized, with a ""When Ready"" or ""Soon"" approach.
+
+**General advice**
+
+* Be cautious when switching to another distro, as compatibility issues may arise.
+* Consider keeping all files on a separate partition to avoid potential problems.
+* Research the specific features and differences between each distribution before making a switch."
+HI. How do i change the screensaver timeout ?,0.265,answer,https://askubuntu.com/q/2970,"To change the screensaver timeout, you can adjust the idle time in the System Settings > Brightness and Lock. This will allow you to customize how long your screen remains active before it locks automatically."
+"How much 'better' is 10.10 than 10.4.  Or would it be the otherway around?  I believe 10.04 is the LTS, correct?",0.335,answer,https://askubuntu.com/q/19234,"The difference between Ubuntu 10.10 and 10.04 lies in their support lifecycle. Ubuntu 10.04 is a Long Term Support (LTS) release, which means it receives security updates for five years after its initial release, providing stability and reliability. In contrast, Ubuntu 10.10 is not an LTS release, meaning it will only receive security updates for two years, after which point it will no longer be supported. If you prioritize long-term support and stability, 10.04 would be a better choice; if you're willing to take on more risk in exchange for newer features and packages, 10.10 might be the way to go."
+"in Terminal, what's mean 'sh' ?",0.407,answer,https://askubuntu.com/q/410613,"In Terminal, 'sh' refers to the Bourne Again shell (Bash), which is a Unix shell and command language interpreter for the GNU operating system."
+"Hi, I just installed Windows 7 pro in VirtualBox 3.0.8_OSE in Ubuntu 9.10. Windows detects no audio device. The VM is setup using Pulse audio. How can I get audio to work?",0.462,REFUSE,https://askubuntu.com/q/633674,[gated — refused]
+"hi.  if i have put a dvd in the drive, and i can go through the filesystem and whatnot and execute programs from it, then it must be mounted, yes?  why would there be no device, then, in gparted?  or, on a related note, how can i figure out what device is associated with a folder in /media/ ???",0.376,answer,https://askubuntu.com/q/102406,"The relationship between a device name (e.g., /dev/sdb1) and its mount point (e.g., /media/user/sth) is that they serve different purposes. The device name refers to the physical hardware device itself, while the mount point is a logical location where data from that device can be accessed. Think of it like a website vs. the actual files stored on the server - just as you navigate to specific pages on a website, you access files through their respective mount points."
+what is the location and name of the file where you can add apps to start at boot?,0.358,answer,https://askubuntu.com/q/74031,"To add an app to start at boot, you'll need to create a `.desktop` file in your `~/.config/autostart` directory. You can do this by opening a terminal and running `nano ~/.config/autostart/your_app.desktop`, where ""your_app"" is the name of the application you want to add. Fill out the necessary fields, such as the command to run the app (e.g., `firefox`) or browse to the executable file if it's not in your PATH. Save and close the file, and the app should now start automatically on login."
+in a gnome environment? it's easy in a kde environment,0.424,answer,https://askubuntu.com/q/99583,"To achieve a similar functionality as Windows 7's taskbar in Gnome, you would need to install and configure desktop widgets or applets, such as those available through the ""gdesklets"" and ""screenlets"" programs. These can be found in the Ubuntu Software Center. Keep in mind that while these tools are available, they may not provide the exact same functionality as KDE's Plasma desktop."
+"hrm, suddenly nothing but firefox plays sound now, has firefox locked the sound system somehow?",0.357,answer,https://askubuntu.com/q/1239619,"It sounds like Firefox might have taken control of the sound system, but it's not necessarily locked down. Try installing pavucontrol to manage your sound settings, as it can help you identify which output device is being used by Firefox and select a different one if needed."
+"Hi, what is the best recommended way to create a USB Install of Ubuntu with some Custom Programs i install afterwards, eg. Settings preserved between Reboots? Is there anything wrong with just taking the normal CD, and installing it on the Flash Drive like i would on HD. Thanks",0.322,answer,https://askubuntu.com/q/184044,"To create a custom Ubuntu USB install with preserved settings between reboots, you can use Remastersys. This will create a hardware-independent LiveCD ISO backup of your system, which you can then use to create a LiveUSB. You'll need to add the Remastersys source information to Software Center and install it, then run Remastersys to create the ISO file. After that, you can use Unetbootin to burn the ISO to a USB drive."
