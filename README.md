@@ -264,7 +264,7 @@ definition, the "sudo perpetually" question, the invalid-IP reasoning, and the
 recursive-permissions command — with no hallucination and clean, plain-prose
 style (the style constraints in the prompt held). On one question where
 retrieval was only tangential, it even flagged that it lacked a strong match
-rather than overclaiming — a second layer of honesty on top of the gate.
+rather than overclaiming, which is a second layer of honesty on top of the gate.
 
 ### 3. Latency — AWS was ~33× faster on this hardware
 
@@ -292,7 +292,7 @@ output tokens** (on-demand, us-east-1). At this project's scale:
 
 - The full evaluation (24 generated answers, short prompts) cost **under $0.10**.
 - A single answered query is roughly **$0.003**.
-- At ~100 questions/day, generation would run on the order of **~$9/month**.
+- At around 100 questions/day, generation would run on the order of **~$9/month**.
 - S3 Vectors is pay-per-use with **no idle floor**, so storing 33K vectors and
   querying them costs cents — notably avoiding the ~$350/month minimum of a
   provisioned vector service such as OpenSearch Serverless.
