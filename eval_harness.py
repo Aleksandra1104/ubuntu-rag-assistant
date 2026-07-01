@@ -1,21 +1,20 @@
 """
-Evaluation harness for the Ask Ubuntu RAG.
+Evaluation harness for the Ubuntu RAG assistant — runs against EITHER backend.
 
-Runs a batch of real questions (from the Ubuntu dialogue dataset) through the
-pipeline, records each one's best retrieval distance and whether the relevance
-gate let it answer, and writes BOTH:
-  * eval_results.csv   -- flat, sortable in a spreadsheet
-  * eval_report.html   -- one readable card per question, opens in browser
+Set BACKEND to "local" (Chroma + Ollama) or "aws" (S3 Vectors + Bedrock).
+Everything else — the 30 questions, the relevance gate, the report format — is
+identical for both, so the two runs are directly comparable. Outputs are named
+per backend (eval_local.* / eval_aws.*) so runs don't overwrite each other.
 
-Two uses:
-  * Threshold tuning (fast): leave GENERATE = False. If you only need distances.
-  * Quality review (slow): set GENERATE = True to also generate answers to read (might take a little time).
+Records per-question retrieval distance, gate decision, answer, and LATENCY
+(wall-clock seconds per question), then writes a CSV + an HTML report.
 
     python eval_harness.py
 """
 
 import csv
 import html
+import time
 import random
 import statistics
 import webbrowser
@@ -24,27 +23,41 @@ from pathlib import Path
 import pandas as pd
 from huggingface_hub import HfApi, hf_hub_download
 
-from rag_core import (
-    get_collection, get_llm, retrieve, is_relevant, build_prompt,
-    best_distance, RELEVANCE_THRESHOLD,
-)
+from rag_core import is_relevant, best_distance, RELEVANCE_THRESHOLD
 
+# --- what to run ---
+BACKEND = "local"          # "local" (Chroma+Ollama) or "aws" (S3 Vectors+Bedrock)
+GENERATE = True            # False = retrieval-only (fast); True = also generate answers
 N_QUESTIONS = 30
-GENERATE = True          # True = also generate answers (slower, for quality review)
-MODEL = "qwen3:8b"
-OUT_CSV = "eval_results.csv"
-OUT_HTML = "eval_report.html"
+MODEL = "qwen3:8b"         # local backend only
 SEED = 42
+
+OUT_CSV = f"eval_{BACKEND}.csv"
+OUT_HTML = f"eval_{BACKEND}.html"
+
+
+def make_backend():
+    """
+    Return (retrieve_fn, answer_fn) for the chosen backend, each taking
+    (question) and giving the same shapes:
+        retrieve_fn(question) -> hits [(text, metadata, distance), ...]
+        answer_fn(question)   -> (answer_text, hits, used_kb)
+    """
+    if BACKEND == "aws":
+        import aws_core
+        return (lambda q: aws_core.retrieve(q, 4),
+                lambda q: aws_core.answer(q, 4))
+    else:
+        from rag_core import get_collection, get_llm, retrieve, answer
+        col = get_collection()
+        llm = get_llm(MODEL)
+        return (lambda q: retrieve(col, q, 4),
+                lambda q: answer(col, llm, q, 4))
 
 
 def sample_questions(n):
-    """
-    Pull n distinct, reasonable-length questions from the dataset.
-
-    Avoids the `datasets` library (whose aiohttp import crashes on some
-    Windows setups with an SSL/ASN1 error). Downloads the parquet via
-    huggingface_hub, which uses requests + certifi, not the Windows cert store.
-    """
+    """Pull n distinct, reasonable-length questions from the dataset (via
+    huggingface_hub + pandas, avoiding the `datasets`/aiohttp SSL crash)."""
     repo = "sedthh/ubuntu_dialogue_qa"
     parquet = next(
         f for f in HfApi().list_repo_files(repo, repo_type="dataset")
@@ -53,10 +66,8 @@ def sample_questions(n):
     path = hf_hub_download(repo, parquet, repo_type="dataset")
     column = pd.read_parquet(path, columns=["INSTRUCTION"])["INSTRUCTION"].tolist()
 
-    candidates = [
-        q.strip() for q in column
-        if isinstance(q, str) and 20 <= len(q.strip()) <= 300
-    ]
+    candidates = [q.strip() for q in column
+                  if isinstance(q, str) and 20 <= len(q.strip()) <= 300]
     random.Random(SEED).shuffle(candidates)
     seen, picked = set(), []
     for q in candidates:
@@ -101,125 +112,117 @@ font-size:12px;font-weight:600;margin:22px 0}
 
 
 def write_html(records, path, threshold):
-    recs = sorted(
-        records, key=lambda r: r["dist"] if r["dist"] is not None else 99
-    )
+    recs = sorted(records, key=lambda r: r["dist"] if r["dist"] is not None else 99)
     answered = sum(1 for r in recs if r["passed"])
     dists = [r["dist"] for r in recs if r["dist"] is not None]
+    lats = [r["latency"] for r in recs if r["latency"] is not None]
 
     out = [f"<!doctype html><html><head><meta charset='utf-8'>"
-           f"<title>Ask Ubuntu RAG — evaluation</title><style>{CSS}</style></head><body>"]
-    out.append("<h1>Ask Ubuntu RAG — evaluation report</h1>")
-    summary = (
-        f"<b>{len(recs)}</b> questions · <b>{answered}</b> answered · "
-        f"<b>{len(recs) - answered}</b> refused · gate cutoff <code>{threshold}</code>"
-    )
+           f"<title>Ubuntu RAG evaluation — {BACKEND}</title><style>{CSS}</style></head><body>"]
+    out.append(f"<h1>Ubuntu RAG evaluation — {BACKEND} backend</h1>")
+    summary = (f"<b>{len(recs)}</b> questions · <b>{answered}</b> answered · "
+               f"<b>{len(recs) - answered}</b> refused · gate cutoff <code>{threshold}</code>")
     if dists:
         summary += (f"<br>best distance: min <code>{min(dists):.3f}</code> · "
                     f"median <code>{statistics.median(dists):.3f}</code> · "
-                    f"max <code>{max(dists):.3f}</code>"
-                    f"<br><small>Sorted best→worst. Read the cards around the dashed "
-                    f"cutoff line to judge whether the threshold sits right.</small>")
+                    f"max <code>{max(dists):.3f}</code>")
+    if lats:
+        summary += (f"<br>latency (s): median <code>{statistics.median(lats):.2f}</code> · "
+                    f"mean <code>{statistics.mean(lats):.2f}</code> · "
+                    f"min <code>{min(lats):.2f}</code> · max <code>{max(lats):.2f}</code>")
     out.append(f"<div class='summary'>{summary}</div>")
 
     crossed = False
     for i, r in enumerate(recs, 1):
-        if (not crossed and r["dist"] is not None and r["dist"] > threshold):
-            out.append(f"<div class='threshold'><span>relevance cutoff "
-                       f"{threshold} — entries below answer, above refuse</span></div>")
+        if not crossed and r["dist"] is not None and r["dist"] > threshold:
+            out.append(f"<div class='threshold'><span>relevance cutoff {threshold} — "
+                       f"entries below answer, above refuse</span></div>")
             crossed = True
-
         cls = "ok" if r["passed"] else "refuse"
-        badge = "ANSWERED" if r["passed"] else "REFUSED"
         d = r["dist"]
-        meta = f"<span class='badge {cls}'>{badge}</span>"
+        meta = f"<span class='badge {cls}'>{'ANSWERED' if r['passed'] else 'REFUSED'}</span>"
         if d is not None:
-            meta += (f"<span>distance {d:.3f}</span>"
-                     f"<span>similarity {1 - d:.3f}</span>")
+            meta += f"<span>distance {d:.3f}</span><span>similarity {1 - d:.3f}</span>"
+        if r["latency"] is not None:
+            meta += f"<span>latency {r['latency']:.2f}s</span>"
         if r["top_source"]:
             meta += f"<a href='{html.escape(r['top_source'])}'>top source ↗</a>"
 
         ans = r["answer"].strip()
-        if ans:
-            ans_html = f"<div class='answer'>{html.escape(ans)}</div>"
-        else:
-            ans_html = ("<div class='answer empty'>(retrieval-only run — set "
-                        "GENERATE=True to produce answers)</div>")
+        ans_html = (f"<div class='answer'>{html.escape(ans)}</div>" if ans
+                    else "<div class='answer empty'>(retrieval-only run — set GENERATE=True)</div>")
 
         srcs = []
         for text, m, dist in r["hits"]:
             url = m.get("url", "")
             snip = html.escape(text.strip().replace("\n", " ")[:300])
-            srcs.append(
-                f"<div class='src'><a href='{html.escape(url)}'>{html.escape(url)}</a>"
-                f" · dist {dist:.3f}<div class='snip'>{snip}...</div></div>"
-            )
+            dtxt = f"{dist:.3f}" if dist is not None else "n/a"
+            srcs.append(f"<div class='src'><a href='{html.escape(url)}'>{html.escape(url)}</a>"
+                        f" · dist {dtxt}<div class='snip'>{snip}...</div></div>")
         details = (f"<details><summary>{len(r['hits'])} retrieved sources</summary>"
                    f"{''.join(srcs)}</details>")
 
-        out.append(
-            f"<div class='card {cls}'><div class='q'>{i}. {html.escape(r['question'])}</div>"
-            f"<div class='meta'>{meta}</div>{ans_html}{details}</div>"
-        )
+        out.append(f"<div class='card {cls}'><div class='q'>{i}. {html.escape(r['question'])}</div>"
+                   f"<div class='meta'>{meta}</div>{ans_html}{details}</div>")
 
     out.append("</body></html>")
     Path(path).write_text("".join(out), encoding="utf-8")
 
 
 def main():
-    col = get_collection()
-    llm = get_llm(MODEL) if GENERATE else None
+    print(f"Backend: {BACKEND}   generate: {GENERATE}")
+    retrieve_fn, answer_fn = make_backend()
     questions = sample_questions(N_QUESTIONS)
+
+    # warm-up (untimed) so model-load / first-connection cost doesn't skew Q1
+    print("Warming up...")
+    try:
+        (answer_fn if GENERATE else retrieve_fn)(questions[0])
+    except Exception as e:
+        print(f"  warm-up note: {e}")
 
     records = []
     for i, q in enumerate(questions, 1):
-        hits = retrieve(col, q, k=4)
-        bd = best_distance(hits)
-        passed = is_relevant(hits)               # uses default threshold
-        top_url = hits[0][1].get("url", "") if hits else ""
-
-        ans = ""
+        t0 = time.perf_counter()
         if GENERATE:
-            ans = (llm.invoke(build_prompt(q, hits)).content
-                   if passed else "[gated — refused]")
+            ans, hits, passed = answer_fn(q)
+        else:
+            hits = retrieve_fn(q)
+            passed = is_relevant(hits)
+            ans = ""
+        latency = time.perf_counter() - t0
 
-        records.append({
-            "question": q, "dist": bd, "passed": passed,
-            "top_source": top_url, "answer": ans, "hits": hits,
-        })
-        print(f"[{i:>2}/{len(questions)}] dist={bd:.3f}  "
-              f"{'answer' if passed else 'REFUSE'}  {q[:60]}")
+        bd = best_distance(hits)
+        top_url = hits[0][1].get("url", "") if hits else ""
+        records.append({"question": q, "dist": bd, "passed": passed,
+                        "top_source": top_url, "answer": ans, "hits": hits,
+                        "latency": latency})
+        print(f"[{i:>2}/{len(questions)}] dist={bd:.3f}  {latency:5.2f}s  "
+              f"{'answer' if passed else 'REFUSE'}  {q[:50]}")
 
-    # flat CSV
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=["question", "best_distance", "gate", "top_source", "answer"]
-        )
-        writer.writeheader()
+        w = csv.DictWriter(f, fieldnames=["question", "best_distance", "gate",
+                                          "latency_s", "top_source", "answer"])
+        w.writeheader()
         for r in records:
-            writer.writerow({
-                "question": r["question"],
-                "best_distance": round(r["dist"], 3) if r["dist"] is not None else "",
-                "gate": "answer" if r["passed"] else "REFUSE",
-                "top_source": r["top_source"],
-                "answer": r["answer"],
-            })
+            w.writerow({"question": r["question"],
+                        "best_distance": round(r["dist"], 3) if r["dist"] is not None else "",
+                        "gate": "answer" if r["passed"] else "REFUSE",
+                        "latency_s": round(r["latency"], 2),
+                        "top_source": r["top_source"], "answer": r["answer"]})
 
-    # readable HTML report
     write_html(records, OUT_HTML, RELEVANCE_THRESHOLD)
 
     dists = sorted(r["dist"] for r in records if r["dist"] is not None)
+    lats = [r["latency"] for r in records]
     answered = sum(1 for r in records if r["passed"])
     print("\n" + "=" * 52)
-    print(f"Questions: {len(records)}   answered: {answered}   refused: {len(records) - answered}")
+    print(f"[{BACKEND}] questions: {len(records)}  answered: {answered}  refused: {len(records)-answered}")
     if dists:
-        print(f"best_distance  min={dists[0]:.3f}  "
-              f"median={statistics.median(dists):.3f}  max={dists[-1]:.3f}")
-        print("sorted distances:", ", ".join(f"{d:.2f}" for d in dists))
-    print(f"current gate threshold: {RELEVANCE_THRESHOLD}")
+        print(f"best_distance  min={dists[0]:.3f}  median={statistics.median(dists):.3f}  max={dists[-1]:.3f}")
+    print(f"latency (s)    median={statistics.median(lats):.2f}  mean={statistics.mean(lats):.2f}  "
+          f"min={min(lats):.2f}  max={max(lats):.2f}")
     print(f"\nWrote {OUT_CSV} and {OUT_HTML}")
-
-    # open the report in the default browser
     webbrowser.open(Path(OUT_HTML).resolve().as_uri())
 
 

@@ -228,18 +228,99 @@ Across all three models the relevance gate behaved identically — the same six 
 
 ---
 
-## Future work: migration to AWS
+## Local vs AWS: is the managed version worth paying for?
 
-The next phase is to port this system onto managed AWS services. 
+The same system was built and run two ways, then evaluated on the same 30
+questions. Held constant across both: the documents, the `all-MiniLM-L6-v2`
+embeddings, the prompt, the relevance gate, and the `0.45` cutoff. Only two
+things changed:
 
-**A measured cost/quality comparison.** Rather than assuming the managed cloud version is better, the plan is to measure it. The same evaluation harness and the same 30 questions will be run against the AWS version, and the two will be compared on retrieval relevance, latency, and running cost, to answer concretely whether the managed AWS version is worth paying for.
+| | Local | AWS |
+|---|---|---|
+| Vector store | ChromaDB (on disk) | Amazon S3 Vectors |
+| Generation | Qwen3 8B via Ollama | Claude Haiku 4.5 via Amazon Bedrock |
+| Hardware | Intel Core Ultra 7 155U, 16 GB RAM, CPU only (no discrete GPU) | Amazon's hosted infrastructure, over the network |
 
-**What changes.** Because all retrieval, prompt, and gate logic is isolated in `rag_core.py`, the migration is mostly swapping two components:
+Because only the store and the model differ, each axis below isolates one real
+difference.
 
-- **Vector store:** ChromaDB (local) → Amazon S3 Vectors (managed, pay-per-use, no idle floor).
-- **Generation model:** Ollama / Qwen3 8B (local) → Amazon Bedrock (called through `boto3`).
+### 1. Retrieval — effectively identical
 
-**What stays the same.** The two-corpus design, the relevance gate and its honest refusal, the cosine retrieval approach, the evaluation harness, and the 30-question benchmark all carry over unchanged.
+Same vectors in, so both stores returned the same neighbours at the same cosine
+distances, often matching to three decimals. A handful of questions differed by
+0.001–0.002, and one (the AirPort/Wine question) surfaced a different top
+document — because ChromaDB and S3 Vectors use different approximate
+nearest-neighbour implementations that can diverge at the margin when several
+documents are similarly close. Crucially, no gate decision changed: the same
+6 questions were refused and the same 24 answered on both backends. The store
+swap changed retrieval only cosmetically.
+
+### 2. Answer quality — Bedrock was best
+
+Across the four models tried in this project (Llama 3.2 3B, Qwen2.5 7B, and
+Qwen3 8B locally, and Claude Haiku 4.5 on Bedrock), Haiku 4.5 produced the
+strongest answers. It got every previously-tracked failure right — the `sh`
+definition, the "sudo perpetually" question, the invalid-IP reasoning, and the
+recursive-permissions command — with no hallucination and clean, plain-prose
+style (the style constraints in the prompt held). On one question where
+retrieval was only tangential, it even flagged that it lacked a strong match
+rather than overclaiming — a second layer of honesty on top of the gate.
+
+### 3. Latency — AWS was ~33× faster on this hardware
+
+| | Local (Qwen3 8B, CPU) | AWS (Haiku 4.5, Bedrock) |
+|---|---|---|
+| Median (answered) | ~109 s | ~3.3 s |
+| Fastest | 21 s | 2.4 s |
+| Slowest | 609 s (>10 min) | 4.4 s |
+
+On a CPU-only laptop, local generation ranged from slow to unusable — a
+ten-minute answer is not a support tool anyone would wait for. Bedrock returned
+in about 3 seconds including the network round-trip.
+
+This gap is **hardware-bound, not software-bound**: it reflects a consumer
+laptop CPU versus datacenter accelerators. On a machine with a capable GPU,
+local latency would be far lower — so the honest claim is "on CPU-only consumer
+hardware, local generation is ~30–40× slower," not "local inference is
+inherently slow." (Refusals were sub-second on both backends, since they skip
+generation entirely.)
+
+### 4. Cost
+
+Claude Haiku 4.5 on Bedrock is **$1 per million input tokens and $5 per million
+output tokens** (on-demand, us-east-1). At this project's scale:
+
+- The full evaluation (24 generated answers, short prompts) cost **under $0.10**.
+- A single answered query is roughly **$0.003**.
+- At ~100 questions/day, generation would run on the order of **~$9/month**.
+- S3 Vectors is pay-per-use with **no idle floor**, so storing 33K vectors and
+  querying them costs cents — notably avoiding the ~$350/month minimum of a
+  provisioned vector service such as OpenSearch Serverless.
+- Embeddings run locally, so they add nothing.
+
+Local generation has **no marginal cost**, but it isn't free: it requires the
+hardware and, on CPU, minutes of compute per answer.
+
+### Verdict
+
+For this use case — a responsive support assistant on consumer hardware — **the
+managed AWS version is clearly worth paying for.** It answered about 33× faster,
+gave the best answers of any model tried, and cost pennies to run at this scale
+with no idle infrastructure cost. The local version's advantages are that it is
+free at the margin, fully offline, and keeps all data on the machine — which
+matters for privacy-sensitive or air-gapped settings, or if a capable local GPU
+would close the latency gap.
+
+The deciding factor is context, not a universal winner:
+
+- **Responsiveness, best quality, low ops, small scale → AWS.** Pennies buys
+  datacenter-speed inference and a stronger model, with no hardware to own.
+- **Zero marginal cost, offline, data-stays-local, or a GPU already on hand →
+  local.**
+
+For the goal that started this project — a support assistant a person would
+actually wait for — the answer is yes: on a CPU laptop, the managed version is
+worth its very small cost.
 
 ---
 
